@@ -2,6 +2,9 @@ pipeline {
     agent any
 
     environment {
+        // Ensure standard paths are included so Jenkins finds the docker CLI
+        PATH = "/usr/local/bin:/usr/bin:/bin:${env.PATH}"
+        
         // Change this to your Docker Hub username if different
         DOCKER_HUB_USER = "shivanshks06"
         IMAGE_NAME      = "ai-resume-analyzer"
@@ -19,9 +22,21 @@ pipeline {
             }
         }
 
+        stage('Clean Space Before Build') {
+            steps {
+                echo 'Pruning unused containers and builder cache to prevent disk exhaustion...'
+                sh '''
+                    # Free up disk space before build
+                    docker system prune -f || true
+                    docker builder prune -f --filter "until=24h" || true
+                    df -h /
+                '''
+            }
+        }
+
         stage('Build Docker Image') {
             steps {
-                echo 'Building Docker image...'
+                echo "Building Docker image: ${DOCKER_HUB_USER}/${IMAGE_NAME}:${IMAGE_TAG}..."
                 sh "docker build -t ${DOCKER_HUB_USER}/${IMAGE_NAME}:${IMAGE_TAG} -t ${DOCKER_HUB_USER}/${IMAGE_NAME}:latest ."
             }
         }
@@ -40,7 +55,7 @@ pipeline {
         stage('Deploy Application') {
             steps {
                 echo 'Deploying application with Docker Compose...'
-                sh 'docker compose down'
+                sh 'docker compose down || true'
                 sh 'docker compose up -d'
             }
         }
@@ -48,8 +63,11 @@ pipeline {
 
     post {
         always {
-            echo 'Cleaning up dangling images...'
-            sh 'docker image prune -f || true'
+            echo 'Post-build cleanup...'
+            sh '''
+                docker image prune -f || true
+                docker builder prune -f --filter "until=1h" || true
+            '''
         }
         success {
             echo 'Pipeline succeeded! Image pushed to Docker Hub and application deployed.'
