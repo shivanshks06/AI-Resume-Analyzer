@@ -24,11 +24,11 @@ pipeline {
 
         stage('Clean Space Before Build') {
             steps {
-                echo 'Pruning unused containers and builder cache to prevent disk exhaustion...'
+                echo 'Reclaiming disk space before building...'
                 sh '''
-                    # Free up disk space before build
-                    docker system prune -f || true
-                    docker builder prune -f --filter "until=24h" || true
+                    # Aggressively remove unused build cache and dangling images
+                    docker system prune -af || true
+                    docker builder prune -af || true
                     df -h /
                 '''
             }
@@ -66,7 +66,7 @@ pipeline {
             echo 'Post-build cleanup...'
             sh '''
                 docker image prune -f || true
-                docker builder prune -f --filter "until=1h" || true
+                docker builder prune -f || true
             '''
         }
         success {

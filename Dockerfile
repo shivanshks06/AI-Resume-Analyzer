@@ -21,16 +21,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Copy requirements file first to take advantage of Docker layer caching
 COPY App/requirements.txt /app/App/requirements.txt
 
-# Upgrade pip, install setuptools<70 (needed for pkg_resources in spaCy 2.3.5) and wheel, and install Python dependencies
+# Install Python dependencies, spaCy model, and NLTK stopwords, then purge build tools to save disk space
 RUN pip install --no-cache-dir --upgrade pip "setuptools<70" wheel && \
-    pip install --no-cache-dir -r /app/App/requirements.txt
-
-# Download required spaCy model and NLTK corpora (downloading stopwords directly to ensure reliability)
-RUN pip install --no-cache-dir https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-2.3.1/en_core_web_sm-2.3.1.tar.gz && \
+    pip install --no-cache-dir -r /app/App/requirements.txt && \
+    pip install --no-cache-dir https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-2.3.1/en_core_web_sm-2.3.1.tar.gz && \
     mkdir -p /root/nltk_data/corpora && \
     curl -sSL https://raw.githubusercontent.com/nltk/nltk_data/gh-pages/packages/corpora/stopwords.zip -o /tmp/stopwords.zip && \
-    python -m zipfile -e /tmp/stopwords.zip /root/nltk_data/corpora && rm -f /tmp/stopwords.zip && \
-    python -c "import nltk; nltk.download('words'); nltk.download('punkt'); nltk.download('averaged_perceptron_tagger'); nltk.download('maxent_ne_chunker')"
+    python -m zipfile -e /tmp/stopwords.zip /root/nltk_data/corpora && \
+    rm -f /tmp/stopwords.zip && \
+    apt-get purge -y --auto-remove build-essential gcc g++ && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* /root/.cache /tmp/*
 
 # Copy the application source code into the image
 COPY . /app
