@@ -2,15 +2,13 @@ pipeline {
     agent any
 
     environment {
-        // Ensure standard paths are included so Jenkins finds the docker CLI
+        
         PATH = "/usr/local/bin:/usr/bin:/bin:${env.PATH}"
         
-        // Change this to your Docker Hub username if different
         DOCKER_HUB_USER = "shivanshks06"
         IMAGE_NAME      = "ai-resume-analyzer"
         IMAGE_TAG       = "${env.BUILD_NUMBER}"
         
-        // Jenkins Credential ID for Docker Hub (Kind: Username with password)
         DOCKER_HUB_CREDENTIALS = "dockerhub-credentials"
     }
 
